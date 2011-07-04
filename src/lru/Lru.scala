@@ -1,40 +1,38 @@
 package lru
 
 import java.util.Date
-import scala.collection.mutable._
+import scala.collection.mutable.{Map, ListBuffer}
 
 class Lru(var cacheSize:Int = 2) extends Removable {
     
-    val map = new HashMap[String,String] 
-    var keystack = new KeyStack()
+    private[this] val map = Map.empty[String,String] 
+    private[this] val keystack = new KeyStack
     
-    def put(key: String, value: String) = {
+    def put(key: String, value: String): Unit = {
         keystack.touch(key)
         map += key -> value
     }
     
-    def get(key: String): Option[String] = {
-        if(!map.contains(key)) return None
-        keystack.touch(key)
-        map.get(key)
-    }
+    def get(key: String): Option[String] =
+        map.get(key) map { v =>
+          keystack.touch(key)
+          v
+	}
     
-    def peek(key: String): Option[String] = map.get(key)
+    private[lru] def peek(key: String): Option[String] = map.get(key)
     
-    def changeSize(size: Int) = {
-        keystack.changeSize(size)
-    }
-   def remove(time:Date) = {
-       keystack.removeBefore(time)
-   }
-   
+    def changeSize(size: Int): Unit = keystack.changeSize(size)
+
+    def remove(time:Date): Unit = keystack.removeBefore(time)
     
-    class KeyStack {
+    private class KeyStack {
         
-        var stack = ListBuffer[Tuple2[String,Date]]()
+        val stack = ListBuffer.empty[(String, Date)]
 
         def touch(key: String) = {
-            stack = stack.filter( _._1 != key ) + ( key -> new Date )
+            stack.find(_._1 == key) map { 
+              stack -= _ 
+            } getOrElse(stack) += ( key -> new Date )
             shrinkIfNeeded()
         }
         
@@ -43,20 +41,16 @@ class Lru(var cacheSize:Int = 2) extends Removable {
             shrinkIfNeeded()
         }
         
-        private def shrinkIfNeeded() = {
-            if (stack.size > cacheSize) {
-                for(i <- stack.dropRight(cacheSize)){
-                    map.remove(i._1)           
-                }
-                stack = stack.takeRight(cacheSize)          
-            }
+        private def shrinkIfNeeded() = if (stack.size > cacheSize) {
+            drop(stack.take( stack.size - cacheSize ))
         }
-        
-        def removeBefore(time:Date) = {
-            for( i <- stack.filter( ! _._2.after(time) ) ){
-                map.remove(i._1)
-            }
-            stack = stack.filter( _._2.after(time) )
+
+        def removeBefore(time:Date) =
+            drop(stack.takeWhile{ ! _._2.after(time) })
+
+        private def drop[T](e:Traversable[(String, Date)]) = {
+          e.foreach{ e => map.remove(e._1) }
+          stack --= e
         }
     }
 }
