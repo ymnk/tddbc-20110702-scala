@@ -3,22 +3,22 @@ package lru
 import java.util.Date
 import scala.collection.mutable.{Map, ListBuffer}
 
-class Lru(private[this] var cacheSize:Int = 2) extends Removable {
+class Lru[K, V](private[this] var cacheSize:Int = 2) extends Removable {
     
-    private[this] val map = Map.empty[String,String] 
+    private[this] val map = Map.empty[K, V] 
     private[this] val keystack = new KeyStack
     
-    def put(key: String, value: String): Unit = {
+    def put(key: K, value: V): Unit = {
         keystack.touch(key)
         map += key -> value
     }
     
-    def get(key: String): Option[String] = map.get(key) map { v =>
+    def get(key: K): Option[V] = map.get(key) map { v =>
         keystack.touch(key)
         v
     }
     
-    private[lru] def peek(key: String): Option[String] = map.get(key)
+    private[lru] def peek(key: K): Option[V] = map.get(key)
     
     def changeSize(size: Int): Unit = keystack.changeSize(size)
 
@@ -26,9 +26,9 @@ class Lru(private[this] var cacheSize:Int = 2) extends Removable {
     
     private class KeyStack {
         
-        val stack = ListBuffer.empty[(String, Date)]
+        val stack = ListBuffer.empty[(K, Date)]
 
-        def touch(key: String) = {
+        def touch(key: K) = {
             stack.find(_._1 == key) map { 
               stack -= _ 
             } getOrElse(stack) += ( key -> new Date )
@@ -47,7 +47,7 @@ class Lru(private[this] var cacheSize:Int = 2) extends Removable {
         def removeBefore(time:Date) =
             drop(stack.takeWhile{ ! _._2.after(time) })
 
-        private def drop[T](e:Traversable[(String, _)]) = {
+        private def drop(e:Traversable[(K, _)]) = {
           e.foreach{ e => map.remove(e._1) }
           stack.trimStart(e.size)
         }

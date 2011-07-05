@@ -10,7 +10,7 @@ import java.util.Date
 @RunWith(classOf[JUnit4])
 class LruTest {
 
-  var lru: Lru = _
+  var lru: Lru[String, String] = _
  
   @Before
   def setup = {
