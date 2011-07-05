@@ -3,7 +3,7 @@ package lru
 import java.util.Date
 import scala.collection.mutable.{Map, ListBuffer}
 
-class Lru(var cacheSize:Int = 2) extends Removable {
+class Lru(private[this] var cacheSize:Int = 2) extends Removable {
     
     private[this] val map = Map.empty[String,String] 
     private[this] val keystack = new KeyStack
@@ -13,11 +13,10 @@ class Lru(var cacheSize:Int = 2) extends Removable {
         map += key -> value
     }
     
-    def get(key: String): Option[String] =
-        map.get(key) map { v =>
-          keystack.touch(key)
-          v
-	}
+    def get(key: String): Option[String] = map.get(key) map { v =>
+        keystack.touch(key)
+        v
+    }
     
     private[lru] def peek(key: String): Option[String] = map.get(key)
     
@@ -48,9 +47,9 @@ class Lru(var cacheSize:Int = 2) extends Removable {
         def removeBefore(time:Date) =
             drop(stack.takeWhile{ ! _._2.after(time) })
 
-        private def drop[T](e:Traversable[(String, Date)]) = {
+        private def drop[T](e:Traversable[(String, _)]) = {
           e.foreach{ e => map.remove(e._1) }
-          stack --= e
+          stack.trimStart(e.size)
         }
     }
 }

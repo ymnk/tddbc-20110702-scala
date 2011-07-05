@@ -12,7 +12,13 @@ class LruTimerTest {
     
     @Test
     def 定期的に削除メッセージを送信する() {
-        val mock = new MockRemovable()
+        val mock = new Removable {
+            var called = false
+            def remove(time:Date) = {
+                called = true
+            }
+        }
+
         val timer = new LruTimer(mock)
         
         timer.start();
@@ -21,16 +27,5 @@ class LruTimerTest {
         
         assertTrue("呼び出されている", mock.called)
         
-        
     }
-    
-    private class MockRemovable extends Removable {
-           var called = false;
-            def remove(time:Date) {
-                called = true;
-            }
-    }
-    
-    
-
 }
